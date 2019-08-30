@@ -140,6 +140,7 @@ func convert(s string) string {
     if in_slice(s, []string{"всё", "all", "kaikki", "alles"}) {return "всё"}
     if in_slice(s, []string{"завтра", "tomorrow", "huomenna", "morgen"}) {return "завтра"}
     if in_slice(s, []string{"сегодня", "today", "tänään", "heute"}) {return "сегодня"}
+    //...
     return s
 }
 
