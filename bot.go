@@ -95,7 +95,7 @@ var teachers = map[string]string{"Алгебра":"", "Английский":"",
 
 var subj_list = []string{"Алгебра", "Английский", "Геометрия", "История", "Литература", "Мат.Ан.", "МатематикаЕГЭ", "Обществознание", "Программирование", "Русский", "Статистика", "Физ-ра"}
 
-var subj = [][]string{{"Алгебра", "Английский", "Геометрия"}, {"История", "Литература", "Мат.Ан."}, {"МатематикаЕГЭ", "Обществознание", "Программирование"}, {"Русский", "Статистика", "Физ-ра"}, {"Физика", "старт"}}
+var subj = [][]string{{"Алгебра", "старт", "Английский"}, {"Геометрия", "История", "Литература"}, {"Мат.Ан.", "МатематикаЕГЭ", "Обществознание"}, {"Программирование", "Русский", "Статистика"}, {"Физ-ра", "Физика"}}
 
 
 var konspekt_subj = [][]string{{"Мат.Ан.", "Геометрия"}, {"Алгебра", "Обществознание"}, {"старт"}} // заполнить
@@ -117,7 +117,7 @@ func main_menu(id int64) {
 
 
 func hw_menu(id int64) {
-    keyboard(id, "На какой временной период:", [][]string{{"сегодня", "завтра", "всё"}, {"по предмету", "старт", "на дату"}})
+    keyboard(id, "На какой временной период:", [][]string{{"по предмету", "старт", "на дату"}, {"сегодня", "завтра", "всё"}})
 }
 
 func sub_menu(id int64) {
@@ -153,7 +153,10 @@ func reply(update tgbotapi.Update) {
     } else if update.Message.Document != nil {
         doc = "doc"
     }
-
+    if update.Message.Chat.ID != config.Admin && doc != "" {
+      start(id)
+      return
+    }
     if doc != "" {
         // log.Print("doc")
         var resp tgbotapi.File
@@ -309,6 +312,7 @@ func reply(update tgbotapi.Update) {
         case "wish":
             if text != "Cancel" {
                 wishes_chan <- wishes{update.Message.MessageID, id, update.Message.From.FirstName, text}
+                bot.Send(tgbotapi.NewMessage(id, "Пожелание отправлено"))
             }
         case "konspekt":
             bot.Send(tgbotapi.NewDocumentUpload(id, "lecture notes/"+text+".pdf"))
