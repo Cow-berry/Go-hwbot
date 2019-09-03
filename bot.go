@@ -559,7 +559,7 @@ func tt(id int64) {
         wd++
         for _, sub := range line {
             if n == int(awd - 1) {
-                tt += "`   ⠀`" + sub + "\n" // there is a special "empty" character at the end of the gap. It's not a space, so text fairly make 4 equal-sized spaces
+                tt += "`   ⠀`*" + sub + "*\n" // there is a special "empty" character at the end of the gap. It's not a space, so text fairly make 4 equal-sized spaces
             } else {tt += "`    " + sub + "`\n"}
         }
         }
