@@ -13,6 +13,9 @@ import (
     "telegram_calender"
     "net/http"
     "io"
+    "golang.org/x/net/proxy"
+    "context"
+    "net"
     // "database/sql"
     // _ "github.com/mattn/go-sqlite3"c
 )
@@ -91,16 +94,16 @@ func keyboard(id int64, text string, rows [][]string) {
     bot.Send(msg)
 }
 
-var teachers = map[string]string{"Алгебра":"", "Английский":"", "Геометрия":"", "История":"", "Литература":"", "Мат.Ан.":"", "МатематикаЕГЭ":"", "Обществознание":"", "Программирование":"", "Русский":"", "Статистика":"", "Физ-ра":"", "Физика":""}
+var teachers = map[string]string{"Алгебра":"", "Английский":"", "Геометрия":"", "История":"", "Литература":"", "Мат.Ан.":"", "МатематикаЕГЭ":"", "Обществознание":"", "Программирование":"", "Русский":"", "СК-Геометрия":"", "Статистика":"", "Физ-ра":"", "Физика":""}
 
-var subj_list = []string{"Алгебра", "Английский", "Геометрия", "История", "Литература", "Мат.Ан.", "МатематикаЕГЭ", "Обществознание", "Программирование", "Русский", "Статистика", "Физ-ра"}
+var subj_list = []string{"Алгебра", "Английский", "Геометрия", "История", "Литература", "Мат.Ан.", "МатематикаЕГЭ", "Обществознание", "Программирование", "Русский", "Ск-Геометрия", "Статистика", "Физ-ра", "Физика"}
 
-var subj = [][]string{{"Алгебра", "старт", "Английский"}, {"Геометрия", "История", "Литература"}, {"Мат.Ан.", "МатематикаЕГЭ", "Обществознание"}, {"Программирование", "Русский", "Статистика"}, {"Физ-ра", "Физика"}}
+var subj = [][]string{{"Алгебра", "старт", "Английский"}, {"Геометрия", "История", "Литература"}, {"Мат.Ан.", "МатематикаЕГЭ", "Обществознание"}, {"Программирование", "Русский", "Ск-Геометрия"}, {"Статистика", "Физ-ра", "Физика"}}
 
 
 var konspekt_subj = [][]string{{"Мат.Ан.", "Геометрия"}, {"Алгебра", "Обществознание"}, {"старт"}} // заполнить
 
-var colloq = map[string]string{"ege": "МатематикаЕГЭ", "en" : "Английский", "geo" : "Геометрия", "his": "История", "lit": "Литература", "ma": "Мат.Ан.", "pe": "Физ-ра", "ph": "Физика", "pr": "Программирование", "ru": "Русский", "ss": "Обществознание", "st": "Статистика", "al":"Алгебра", "dif":"СК-Диффуры"}
+var colloq = map[string]string{"ege": "МатематикаЕГЭ", "en" : "Английский", "geo" : "Геометрия", "scgeo": "СК-Геометрия", "his": "История", "lit": "Литература", "ma": "Мат.Ан.", "pe": "Физ-ра", "ph": "Физика", "pr": "Программирование", "ru": "Русский", "ss": "Обществознание", "st": "Статистика", "al":"Алгебра", "dif":"СК-Диффуры"}
 
 // const main_menu_keys = [][][]string{{{"дз", "расписание", "старт", "помощь"}, {"конспект", "учителя", "пожелание", "настройки"}},
                                     // {{"get hw", "get tt", "start", "help"}, {"konspekt", "teachers", "wish", "settings"}},
@@ -180,6 +183,7 @@ func reply(update tgbotapi.Update) {
             path = "lecture notes/"
             buf = make([]byte, document.FileSize)
         }
+        //log.Print(resp)
         r, _ := http.Get("https://api.telegram.org/file/bot"+config.Token+"/"+resp.FilePath)
         io.ReadFull(r.Body, buf)
         file, _ := os.Create(path+name+"."+format)
@@ -597,12 +601,23 @@ func main() {
     //Устанавливаем время обновления
     // log.Print(timetable)
     update_timetable()
-    bot, err = tgbotapi.NewBotAPI(config.Token)
-    // bot.Debug = true
+    dialer, proxy_err := proxy.SOCKS5 ("tcp", config.Proxy, &proxy.Auth{User:config.Login, Password:config.Pass}, proxy.Direct)
+    if proxy_err != nil {
+       log.Panicf("Error in proxy %s", proxy_err)
+    }
+
+    client := &http.Client{Transport: &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn,  error) {return dialer.Dial(network, addr)}}}
+
+    bot, err = tgbotapi.NewBotAPIWithClient(config.Token, client)
+    // bot, err = tgbotapi.NewBotAPI(config.Token)
+    //bot.Debug = true
     if (err != nil) {panic(err)}
     u := tgbotapi.NewUpdate(0)
     u.Timeout = 60
-    updates, _ := bot.GetUpdatesChan(u)
+    updates, e := bot.GetUpdatesChan(u)
+    if e != nil {
+        log.Fatal(e, "meow0")
+    }
     bot.Send(tgbotapi.NewMessage(int64(310802215), "started well"))
     //create a gourutine for every message
     // log.Print("started")
@@ -620,9 +635,15 @@ func main() {
     }()
 
 
-    wish_bot, _ := tgbotapi.NewBotAPI(config.Wish_token)
+    wish_bot, e := tgbotapi.NewBotAPIWithClient(config.Wish_token, client)
+    if e != nil {
+        log.Fatal(e, "meow")
+    }
     // wish_bot.Debug = true
-    wish_updates, _ := wish_bot.GetUpdatesChan(u)
+    wish_updates, e := wish_bot.GetUpdatesChan(u)
+    if e != nil {
+        log.Fatal(e, "meow2")
+    }
     wishes_chan = make(chan wishes)
     go func() {
         for wish := range wishes_chan {
