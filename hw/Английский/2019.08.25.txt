@@ -1,5 +1,0 @@
-testish
-file lama.jpg
-some other text
-and moree
-file Матан.pdf

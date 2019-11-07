@@ -94,16 +94,16 @@ func keyboard(id int64, text string, rows [][]string) {
     bot.Send(msg)
 }
 
-var teachers = map[string]string{"Алгебра":"", "Английский":"", "Геометрия":"", "История":"", "Литература":"", "Мат.Ан.":"", "МатематикаЕГЭ":"", "Обществознание":"", "Программирование":"", "Русский":"", "СК-Геометрия":"", "Статистика":"", "Физ-ра":"", "Физика":""}
+var teachers = map[string]string{"Алгебра":"Колпаков Андрей Сергеевич", "Английский":"Дмитриева Наталья Николаевна & Шепталина Екатерина Андреевна", "Геометрия":"Фёдоров Алексей Алексеевич", "История":"Потёмкин Андрей Андреевич", "Литература":"Васильев Денис Владимирович", "Мат.Ан.":"Ильин Юрий Анатольевич", "МатематикаЕГЭ":"Колпаков Андрей Сергеевич", "Обществознание":"Соловьёв Михаил Дмитриевич", "Программирование":"Мусихин Алексей Константинович & Чубаха Никита Игоревич", "Русский":"Круглякова Татьяна Александровна", "СК-Геометрия":"Чистяков Илья Александрович", "Статистика":"Колпаков Андрей Сергеевич", "Физ-ра":"Рогушкин Кирилл Александрович", "Физика":"Александров Виталий Михайлович", "СК-Колпаков":"Колпаков Андрей Сергеевич"}
 
-var subj_list = []string{"Алгебра", "Английский", "Геометрия", "История", "Литература", "Мат.Ан.", "МатематикаЕГЭ", "Обществознание", "Программирование", "Русский", "Ск-Геометрия", "Статистика", "Физ-ра", "Физика"}
+var subj_list = []string{"Алгебра", "Английский", "Геометрия", "История", "Литература", "Мат.Ан.", "МатематикаЕГЭ", "Обществознание", "Программирование", "Русский", "СК-Геометрия", "Статистика", "Физ-ра", "Физика", "СК-Колпаков"}
 
-var subj = [][]string{{"Алгебра", "старт", "Английский"}, {"Геометрия", "История", "Литература"}, {"Мат.Ан.", "МатематикаЕГЭ", "Обществознание"}, {"Программирование", "Русский", "Ск-Геометрия"}, {"Статистика", "Физ-ра", "Физика"}}
+var subj = [][]string{{"Алгебра", "старт", "Английский"}, {"Геометрия", "История", "Литература"}, {"Мат.Ан.", "МатематикаЕГЭ", "Обществознание"}, {"Программирование", "Русский", "СК-Геометрия"}, {"Статистика", "Физ-ра", "Физика"}, {"СК-Колпаков"}}
 
 
-var konspekt_subj = [][]string{{"Мат.Ан.", "Геометрия"}, {"Алгебра", "Обществознание"}, {"старт"}} // заполнить
+var konspekt_subj = [][]string{{"Мат.Ан.", "Геометрия"}, {"Алгебра", "Обществознание"}, {"История", "старт"}} // заполнить
 
-var colloq = map[string]string{"ege": "МатематикаЕГЭ", "en" : "Английский", "geo" : "Геометрия", "scgeo": "СК-Геометрия", "his": "История", "lit": "Литература", "ma": "Мат.Ан.", "pe": "Физ-ра", "ph": "Физика", "pr": "Программирование", "ru": "Русский", "ss": "Обществознание", "st": "Статистика", "al":"Алгебра", "dif":"СК-Диффуры"}
+var colloq = map[string]string{"ege": "МатематикаЕГЭ", "en" : "Английский", "geo" : "Геометрия", "scgeo": "СК-Геометрия", "his": "История", "lit": "Литература", "ma": "Мат.Ан.", "pe": "Физ-ра", "ph": "Физика", "pr": "Программирование", "ru": "Русский", "ss": "Обществознание", "st": "Статистика", "al":"Алгебра", "dif":"СК-Диффуры", "sckolp": "СК-Колпаков"}
 
 // const main_menu_keys = [][][]string{{{"дз", "расписание", "старт", "помощь"}, {"конспект", "учителя", "пожелание", "настройки"}},
                                     // {{"get hw", "get tt", "start", "help"}, {"konspekt", "teachers", "wish", "settings"}},
@@ -176,20 +176,25 @@ func reply(update tgbotapi.Update) {
         } else {
             var ok bool
             name, ok = colloq[update.Message.Caption]
-            if !ok {return}
             document := *update.Message.Document
             format = "pdf"
             resp, _ = bot.GetFile(tgbotapi.FileConfig{document.FileID})
             path = "lecture notes/"
             buf = make([]byte, document.FileSize)
+            if !ok {
+                name = update.Message.Caption
+                path = "hw/files/"
+            }
         }
         //log.Print(resp)
-        r, _ := http.Get("https://api.telegram.org/file/bot"+config.Token+"/"+resp.FilePath)
+        r, err := http.Get("https://api.telegram.org/file/bot"+config.Token+"/"+resp.FilePath)
+        if err != nil {return}
         io.ReadFull(r.Body, buf)
         file, _ := os.Create(path+name+"."+format)
         file.Write(buf)
         file.Close()
         start(id)
+        bot.Send(tgbotapi.NewMessage(id, "saved"))
         return
     }
     //
@@ -301,12 +306,14 @@ func reply(update tgbotapi.Update) {
     case "учителя":
         text = ""
         for sub, teach := range teachers {
-            text += fmt.Sprintf("⌈%s⌋ — %s\n", sub, teach)
+            text += fmt.Sprintf("%s — %s\n", sub, teach)
         }
         bot.Send(tgbotapi.NewMessage(id, text))
     case "дежурные":
         duty, _ := read("duty.txt")
-        bot.Send(tgbotapi.NewMessage(id, duty))
+        msg := tgbotapi.NewMessage(id, duty)
+        msg.ParseMode = "Markdown"
+        bot.Send(msg)
     default:
         switch users[id]{
         case "sub_menu":
@@ -444,6 +451,7 @@ func get_next_date(sub string) string {
             i--
         }
     }
+    log.Print(sub)
     return "не найдено предмета " + sub
 }
 
@@ -484,7 +492,7 @@ func hw(id int64, date string, sub string) {
                 }
             }
 
-            msg := tgbotapi.NewMessage(id, f.Name()[:len(f.Name())-5] + "\n" + final_hw_text)
+            msg := tgbotapi.NewMessage(id, f.Name()[:len(f.Name())-4] + "\n" + final_hw_text)
             msg.ParseMode = "Markdown"
             if msg.Text != "" {
                 bot.Send(msg)
@@ -506,13 +514,17 @@ func hw(id int64, date string, sub string) {
     if date_obj.Before(time.Now()) {
         subs = subj_list
     } else {
-        weekday := (d + m + y + y/4 + 21 - 2) % 7
+        // weekday := (d + m + y + y/4 + 21 - 2) % 7
+        weekday := (int(date_obj.Weekday())+6)%7
         if weekday == 6 {weekday=0} // Sunday -- 0, timetable[0] -- Monday  +-1 -> still Monday ; Saturday -- 6, timetable[6-1] -- Saturday
         subs = timetable[weekday]
     }
     var hw_texts string = ""
     // log.Print(subs, weekday)
+    checked_subs := []string{}
     for _, sub := range subs {
+        if in_slice(sub, checked_subs) {continue}
+        checked_subs = append(checked_subs, sub)
         hw_text, err := read("hw/"+sub+"/"+date+".txt")
         final_hw_text := ""
         var file []string
