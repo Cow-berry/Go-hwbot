@@ -115,7 +115,7 @@ var colloq = map[string]string{"ege": "МатематикаЕГЭ", "en" : "Ан
 
 
 func main_menu(id int64) {
-    keyboard(id, "Главное меню", [][]string{{"дз", "старт",  "расписание"}, {"дежурные", "конспект", "учителя"}, {"пожелание"}})
+    keyboard(id, "Главное меню", [][]string{{"дз", "старт",  "расписание"}, {"дежурные", "конспект", "учителя"}, {"прочие pdf","пожелание"}})
 }
 
 
@@ -129,6 +129,10 @@ func sub_menu(id int64) {
 
 func konspekt_menu(id int64) {
     keyboard(id, "Выберите предмет:", konspekt_subj)
+}
+
+func other_pdfs(id int64) {
+    keyboard(id, "Выберите:", [][]string{{"задачник(геома)", "Алгебра(10М)", "Геометрия(10М)"}, {"Матан(10М)", "Матан(9М)"}})
 }
 
 func start(id int64) {
@@ -289,6 +293,9 @@ func reply(update tgbotapi.Update) {
     case "конспект":
         users[id] = "konspekt"
         konspekt_menu(id)
+    case "прочие pdf":
+        users[id] = "other_pdfs"
+        other_pdfs(id)
     case "на дату":
         msg := tgbotapi.NewMessage(id, "Выберите дату:")
         year, month, _ := time.Now().Date()
@@ -327,6 +334,9 @@ func reply(update tgbotapi.Update) {
             }
         case "konspekt":
             bot.Send(tgbotapi.NewDocumentUpload(id, "lecture notes/"+text+".pdf"))
+        case "other_pdfs":
+            bot.Send(tgbotapi.NewDocumentUpload(id, "other pdfs/"+text+".pdf"))
+            //bot.Send(tgbotapi.NewMessage(id, "tried to send " + text))
         default:
             bot.Send(tgbotapi.NewMessage(id, "Неизвестная команда"))
         }
